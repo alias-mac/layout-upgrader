@@ -59,6 +59,11 @@ To see more output information from the script, you can use the `-v` option
 $ ./update-layouts -p="path/to/sugarcrm" -d="directory/to/convert" --dry-run -v
 ```
 
+You can pass the header file
+```bash
+$ ./update-layouts -p="path/to/sugarcrm" -d="directory/to/convert" --license=path/to/license/file
+```
+
 You can even be bold and run the script directly from github:
 
 ```bash
@@ -79,6 +84,5 @@ $ find <path-to-sugarcrm> -name "*.php.orig" --delete
 ## TODO
 
 - Add the ability to run PSR-2 code fixer (optional param).
-- Add the ability to prepend text (license headers) before the metadata
 
 [SugarCRM]: http://www.sugarcrm.com/

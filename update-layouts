@@ -39,6 +39,7 @@ function process($argv)
         "file::",
         "dir::",
         "path::",
+        "license::",
         "help",
         "dry-run",
     );
@@ -101,12 +102,14 @@ function process($argv)
     require_once 'include/utils/autoloader.php';
     \SugarAutoLoader::init();
 
-    $converter = new Layout_Converter(
-        array(
-            'dryRun' => isset($opts['dry-run']),
-            'verbose' => isset($opts['v']),
-        )
+    $converterOptions = array(
+        'dryRun' => isset($opts['dry-run']),
+        'verbose' => isset($opts['v']),
     );
+    if (!empty($opts['license'])) {
+        $converterOptions['licensePath'] = $opts['license'];
+    }
+    $converter = new Layout_Converter($converterOptions);
 
     // file param given (can be an array)
     if (!empty($files)) {
@@ -160,6 +163,7 @@ usage:  $scriptName [-p="path/to/sugarcrm"] -d="directory/to/convert" --dry-run
         $scriptName [-path="path/to/sugarcrm"] --file="file/to/convert"
         $scriptName [-path="path/to/sugarcrm"] --file="file/to/convert" -v
         $scriptName [-path="path/to/sugarcrm"] -f="file1/to/convert" -f="file2/to/convert"
+        $scriptName [-path="path/to/sugarcrm"] -d="directories/*/to/*/convert" --license=path/to/license/file
 
 Files and/or directories to convert need to be relative to SugarCRM path.
 
@@ -186,6 +190,10 @@ class Layout_Converter
      */
     protected $verbose = false;
     /**
+     * @var string Path for the license header (to prepend on metadata files).
+     */
+    protected $licensePath;
+    /**
      * @var array of files to be converted
      */
     protected $files = array();
@@ -209,6 +217,7 @@ class Layout_Converter
         static $map = array(
             'dryRun' => 'bool',
             'verbose' => 'bool',
+            'licensePath' => 'string',
         );
 
         foreach ($map as $param => $type) {
@@ -317,7 +326,8 @@ class Layout_Converter
     /**
      * Run the converter against all files previously added.
      *
-     * @throws \RuntimeException if no files were given to this converter.
+     * @throws \RuntimeException if no files were given to this converter or if
+     * license path supplied isn't readable.
      *
      * @api
      */
@@ -325,6 +335,17 @@ class Layout_Converter
     {
         if (empty($this->files)) {
             throw new \RuntimeException("No files to convert. Check your script!");
+        }
+
+        if (!empty($this->licensePath)) {
+            if (!is_readable($this->licensePath)) {
+                throw new \RuntimeException(
+                    sprintf("Unable to read license file '%s'.", $this->licensePath)
+                );
+            }
+            $this->log(
+                sprintf("License file '%s' will be appended.", $this->licensePath)
+            );
         }
 
         foreach ($this->getFiles() as $file) {
@@ -409,7 +430,17 @@ class Layout_Converter
         $content = $this->flatVarExport('$viewdefs', $viewdefs, null, $level);
         // clean the default numeric keys
         $content = preg_replace('/[0-9]+\s+=>\s+/', '', $content);
-        $content = "<?php\n$content";
+
+        $header = '';
+        if (!empty($this->licensePath) && is_readable($this->licensePath)) {
+            $header = file_get_contents($this->licensePath);
+            if ($header === false) {
+                throw new \RuntimeException(
+                    sprintf("Unable to load '%s' file.", $this->licensePath)
+                );
+            }
+        }
+        $content = "<?php\n\n$header\n$content\n";
 
         if (!$this->dryRun) {
             if (file_put_contents($file, $content, LOCK_EX) === false) {
