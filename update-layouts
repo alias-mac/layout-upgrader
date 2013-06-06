@@ -212,12 +212,12 @@ class Layout_Converter
         );
 
         foreach ($map as $param => $type) {
-            if (!settype($config['dryRun'], $type)) {
+            if (!settype($config[$param], $type)) {
                 throw new \InvalidArgumentException(
                     sprintf("Invalid configuration option '%s' given.", $param)
                 );
             }
-            $this->$param = $config['dryRun'];
+            $this->$param = $config[$param];
         }
 
         return $this;
